@@ -11,7 +11,6 @@ drop table if exists tblIngredienttype;
 drop table if exists tblCategory;
 drop table if exists tblRestaurant;
 
-
 CREATE TABLE tblRestaurant (
     restaurant_ix SERIAL PRIMARY KEY,
     restaurantname_s text not null,
@@ -55,7 +54,9 @@ CREATE TABLE tblRestaurantContact (
 
 CREATE TABLE tblCategory (
     category_ix SERIAL PRIMARY KEY,
-    categoryname_s text not null
+    categoryname_s text not null,
+    restaurant_ix integer REFERENCES tblRestaurant(restaurant_ix) not null
+
 );
 
 CREATE TABLE tblDish (
@@ -102,10 +103,10 @@ CREATE TABLE tblDishImage (
     dishimage_ix SERIAL PRIMARY KEY,
     imageposition_i integer not null,
     imagename_s text not null,
+    dish_ix integer REFERENCES tblDish(dish_ix) not null,
+    dishimagesize_ix integer REFERENCES tblDishImageSize(dishimagesize_ix) not null,
     createuser_s text,
     updateuser_s text,
-    createdateutc_dt timestamp not null,
-    updatedateutc_dt timestamp not null,
-    dish_ix integer REFERENCES tblDish(dish_ix) not null,
-    dishimagesize_ix integer REFERENCES tblDishImageSize(dishimagesize_ix) not null
+    createdateutc_dt timestamp,
+    updatedateutc_dt timestamp
 );

@@ -8,8 +8,6 @@ CREATE OR REPLACE FUNCTION add_restaurant(r_name text, _restaurantalias text)
         ELSE RETURN 'RESTAURANT ALREADY EXISTS'; END IF; RETURN 'RESTAURANT ADDED ' || CAST(_rowid AS TEXT); END $$
 LANGUAGE 'plpgsql' VOLATILE;
 
-
-select add_restaurant('blah', 'blah');
 CREATE OR REPLACE FUNCTION add_rest_address(_restaurantalias text, street1 text, street2 text, cityname  text, statename  text, stateabbr  text,
                                                zip  integer, country  text, countryabbr  text)
 RETURNS text AS
@@ -69,28 +67,28 @@ LANGUAGE plpgsql;
 SELECT add_rest_with_info('China Wall', 'CW', 'Ping Chen', '(402) 489-9993', '(402) 489-9994', '(402) 489-9995',' chinawall@email.com',
                           '8550 Andermatt Dr', 'Suite #2', 'Lincoln', 'Nebraska', 'NE', 68521, 'United States', 'USA');
 
-CREATE OR REPLACE FUNCTION add_category(category_name text)
+CREATE OR REPLACE FUNCTION add_category(category_name text, _id integer)
 	RETURNS integer AS
     $$
-    	INSERT INTO public.tblCategory(categoryname_s) VALUES($1)
+    	INSERT INTO public.tblCategory(categoryname_s, restaurant_ix) VALUES($1, $2)
         RETURNING category_ix;
 	$$
 LANGUAGE 'sql' VOLATILE;
 
-select add_category('Poultry') as categoryId;
-select add_category('Beef') as categoryId;
-select add_category('Pork') as categoryId;
-select add_category('Seafood') as categoryId;
-select add_category('HouseSpecial') as categoryId;
-select add_category('LoMein') as categoryId;
-select add_category('ChowMein') as categoryId;
-select add_category('EggFooYoung') as categoryId;
-select add_category('MeiFun') as categoryId;
-select add_category('FriedRice') as categoryId;
-select add_category('LowFatPlatter') as categoryId;
-select add_category('KidsMeals') as categoryId;
-select add_category('Appetizer') as categoryId;
-select add_category('Soup') as categoryId;
+select add_category('Poultry', 1) as categoryId;
+select add_category('Beef', 1) as categoryId;
+select add_category('Pork', 1) as categoryId;
+select add_category('Seafood', 1) as categoryId;
+select add_category('HouseSpecial', 1) as categoryId;
+select add_category('LoMein', 1) as categoryId;
+select add_category('ChowMein', 1) as categoryId;
+select add_category('EggFooYoung', 1) as categoryId;
+select add_category('MeiFun', 1) as categoryId;
+select add_category('FriedRice', 1) as categoryId;
+select add_category('LowFatPlatter', 1) as categoryId;
+select add_category('KidsMeals', 1) as categoryId;
+select add_category('Appetizer', 1) as categoryId;
+select add_category('Soup', 1) as categoryId;
 
 insert into public.tblIngredientType(ingredienttypename_s) values('Meat');
 insert into public.tblIngredientType(ingredienttypename_s) values('Sauce');
@@ -327,8 +325,26 @@ CREATE OR REPLACE FUNCTION add_dish_and_dishingredients(_restaurantalias text, _
     $$
 LANGUAGE 'plpgsql' VOLATILE;
 
---select * from dishingredients;
---select * from dish;
+CREATE OR REPLACE FUNCTION add_dish_image()
+  RETURNS void AS
+  $$
+    DECLARE _dishname text:= ''; _dish_ix integer:= 0;
+    BEGIN
+      FOREACH dish_ix IN
+        select replace(replace(regexp_replace(dishname_s, '[''''|.|\\)]', ''), '(', ''), ' ', '_') as _dishname, dish_ix from tbldish;
+      LOOP
+        FOREACH imagesize IN
+          SELECT dishimagesize_ix FROM tblDishImageSize;
+        LOOP
+          INSERT INTO tblDishImage(imageposition_i, imagename_s, createuser_s, updateuser_s, createdateutc_dt, updatedateutc_dt, dish_ix, dishimagesize_ix)
+            VALUES(1, _dishname, 'NETT',, CURRENT_TIMESTAMP,, dish_ix, dishimagesize_ix)
+        END LOOP;
+      END LOOP;
+    END:
+  $$
+LANGUAGE 'plpgsql' VOLATILE;
+
+
 SELECT add_dish_and_dishingredients('CW', 'Chicken and Broccoli', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Chicken, Broc, Brown S}');SELECT add_dish_and_dishingredients('CW', 'General Tso''s Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Chicken, Broc, Red, Scall, Gen}');
 SELECT add_dish_and_dishingredients('CW', 'Kung Pao Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Car, Green, Red, Water, Cel}');
 SELECT add_dish_and_dishingredients('CW', 'Hunan Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Snow, Water, Car, Green, Red, Broc, Cel, Hunan S}');
@@ -432,3 +448,33 @@ SELECT add_dish_and_dishingredients('CW', 'Fried Wonton or Szechuan Wonton', 'N/
 SELECT add_dish_and_dishingredients('CW', 'Dumplings (Fried or Steam)', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Pork}');
 SELECT add_dish_and_dishingredients('CW', 'Chicken Fingers', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Chicken}');
 SELECT add_dish_and_dishingredients('CW', 'Crab Rangoon', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Cream, Scallion, Crab}');
+
+
+Insert into tblDishImageSize(height_i, width_i, sizename_s) values(300, 300, 'LRG');
+Insert into tblDishImageSize(height_i, width_i, sizename_s) values(200, 200, 'MED');
+Insert into tblDishImageSize(height_i, width_i, sizename_s) values(100, 100, 'SML');
+
+
+CREATE OR REPLACE FUNCTION add_dish_image()
+  RETURNS void AS
+  $$
+    DECLARE _dishname text:= ''; _dish_ix integer:= 0; temprow record; imagesize record; _fulldishname text:= '';
+    BEGIN
+      delete from tbldishimage where dishimage_ix > 0;
+      FOR temprow IN
+        select replace(replace(regexp_replace(dishname_s, '[''''|.|\\)]', ''), '(', ''), ' ', '_') as _dishname, dish_ix from tbldish
+      LOOP
+
+      FOR imagesize IN
+          SELECT * FROM tblDishImageSize
+        LOOP
+        	_fulldishname = temprow._dishname || '_' || imagesize.sizename_s;
+          INSERT INTO tblDishImage(imageposition_i, imagename_s, createuser_s, updateuser_s, createdateutc_dt, updatedateutc_dt, dish_ix, dishimagesize_ix)
+            VALUES(1, _fulldishname, 'NETT',NULL, CURRENT_TIMESTAMP, NULL, temprow.dish_ix, imagesize.dishimagesize_ix);
+        END LOOP;
+      END LOOP;
+    END;
+  $$
+LANGUAGE 'plpgsql' VOLATILE;
+
+select add_dish_image();
