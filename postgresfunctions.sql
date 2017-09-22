@@ -325,26 +325,6 @@ CREATE OR REPLACE FUNCTION add_dish_and_dishingredients(_restaurantalias text, _
     $$
 LANGUAGE 'plpgsql' VOLATILE;
 
-CREATE OR REPLACE FUNCTION add_dish_image()
-  RETURNS void AS
-  $$
-    DECLARE _dishname text:= ''; _dish_ix integer:= 0;
-    BEGIN
-      FOREACH dish_ix IN
-        select replace(replace(regexp_replace(dishname_s, '[''''|.|\\)]', ''), '(', ''), ' ', '_') as _dishname, dish_ix from tbldish;
-      LOOP
-        FOREACH imagesize IN
-          SELECT dishimagesize_ix FROM tblDishImageSize;
-        LOOP
-          INSERT INTO tblDishImage(imageposition_i, imagename_s, createuser_s, updateuser_s, createdateutc_dt, updatedateutc_dt, dish_ix, dishimagesize_ix)
-            VALUES(1, _dishname, 'NETT',, CURRENT_TIMESTAMP,, dish_ix, dishimagesize_ix)
-        END LOOP;
-      END LOOP;
-    END:
-  $$
-LANGUAGE 'plpgsql' VOLATILE;
-
-
 SELECT add_dish_and_dishingredients('CW', 'Chicken and Broccoli', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Chicken, Broc, Brown S}');SELECT add_dish_and_dishingredients('CW', 'General Tso''s Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Chicken, Broc, Red, Scall, Gen}');
 SELECT add_dish_and_dishingredients('CW', 'Kung Pao Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Car, Green, Red, Water, Cel}');
 SELECT add_dish_and_dishingredients('CW', 'Hunan Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Snow, Water, Car, Green, Red, Broc, Cel, Hunan S}');
@@ -449,11 +429,9 @@ SELECT add_dish_and_dishingredients('CW', 'Dumplings (Fried or Steam)', 'N/A', '
 SELECT add_dish_and_dishingredients('CW', 'Chicken Fingers', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Chicken}');
 SELECT add_dish_and_dishingredients('CW', 'Crab Rangoon', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Cream, Scallion, Crab}');
 
-
 Insert into tblDishImageSize(height_i, width_i, sizename_s) values(300, 300, 'LRG');
 Insert into tblDishImageSize(height_i, width_i, sizename_s) values(200, 200, 'MED');
 Insert into tblDishImageSize(height_i, width_i, sizename_s) values(100, 100, 'SML');
-
 
 CREATE OR REPLACE FUNCTION add_dish_image()
   RETURNS void AS
