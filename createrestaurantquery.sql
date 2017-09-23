@@ -72,6 +72,7 @@ CREATE TABLE tblDish (
     islunch_b boolean not null default False,
     iscombo_b boolean not null default False,
     isspicy_b boolean not null default False,
+    isfeatured_b boolean not null default FALSE,
     restaurant_ix integer REFERENCES tblRestaurant(restaurant_ix) not null
 );
 
@@ -102,7 +103,7 @@ CREATE TABLE tblDishImageSize (
 CREATE TABLE tblDishImage (
     dishimage_ix SERIAL PRIMARY KEY,
     imageposition_i integer not null,
-    imagename_s text not null,
+    imagelocation_s text not null,
     dish_ix integer REFERENCES tblDish(dish_ix) not null,
     dishimagesize_ix integer REFERENCES tblDishImageSize(dishimagesize_ix) not null,
     createuser_s text,

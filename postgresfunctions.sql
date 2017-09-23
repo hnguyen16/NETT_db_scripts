@@ -267,25 +267,20 @@ CREATE OR REPLACE FUNCTION add_dishingredients(_dishname text, _ingredientidlist
 LANGUAGE 'plpgsql' VOLATILE;
 
 CREATE OR REPLACE FUNCTION add_dish(_restaurantalias text, _dishname text, _description text, _categoryname text, _pricebreakfast numeric, _pricelunch numeric,
-                                        _pricecombo numeric, _pricedinner numeric, _isbreakfast boolean, _islunch boolean, _iscombo boolean, _isspicy boolean)
+                                        _pricecombo numeric, _pricedinner numeric, _isbreakfast boolean, _islunch boolean, _iscombo boolean, _isspicy boolean, _isfeatured boolean)
 	RETURNS text AS
     $$
     DECLARE _restid integer := 0; _categoryid integer := 0; _rowid integer := -1; _catname varchar; _catid integer[];
     BEGIN
         SELECT restaurant_ix INTO _restid FROM tblrestaurant WHERE restaurantalias_s = $1;
 
-        --FOREACH _catname in ARRAY _categoryname
-        --LOOP
-        	SELECT category_ix INTO _categoryid FROM tblcategory WHERE categoryname_s LIKE '%'||_categoryname||'%';
-        --    _catid := _catid || _categoryid;
-        --END LOOP;
+      	SELECT category_ix INTO _categoryid FROM tblcategory WHERE categoryname_s LIKE '%'||_categoryname||'%';
 
-        -- IF _restid > 0 AND array_length(_catid,1) > 0 THEN
         IF _restid > 0 AND _categoryid > 0 THEN
             IF EXISTS(SELECT dish_ix FROM tbldish WHERE restaurant_ix = _restid AND dishname_s like '%' || _dishname || '%') = FALSE THEN
                        --      RETURN 'here' || Cast(array_length(_iscombo as text);
-                INSERT INTO tbldish(dishname_s, description_s, restaurant_ix, category_ix, pricebreakfast_dbl, pricelunch_dbl, pricecombo_dbl, pricedinner_dbl, isbreakfast_b, islunch_b, isspicy_b, iscombo_b)
-                VALUES(_dishname, _description, _restid, _categoryid, _pricebreakfast, _pricelunch, _pricecombo, _pricedinner, _isbreakfast, _islunch, _isspicy, _iscombo);
+                INSERT INTO tbldish(dishname_s, description_s, restaurant_ix, category_ix, pricebreakfast_dbl, pricelunch_dbl, pricecombo_dbl, pricedinner_dbl, isbreakfast_b, islunch_b, isspicy_b, iscombo_b, isfeatured_b)
+                VALUES(_dishname, _description, _restid, _categoryid, _pricebreakfast, _pricelunch, _pricecombo, _pricedinner, _isbreakfast, _islunch, _isspicy, _iscombo, _isfeatured);
                  SELECT currval('tbldish_dish_ix_seq') INTO _rowid;
                  --RETURN 'here' || Cast(array_length(_catid, 1) as text);
             END IF;
@@ -305,7 +300,7 @@ LANGUAGE 'plpgsql' VOLATILE;
 
 CREATE OR REPLACE FUNCTION add_dish_and_dishingredients(_restaurantalias text, _dishname text, _description text,
                             _categoryname text, _pricebreakfast numeric, _pricelunch numeric, _pricecombo numeric, _pricedinner numeric,
-                            _isbreakfast boolean, _islunch boolean, _iscombo boolean, _isspicy boolean, _dishingredientlist varchar[])
+                            _isbreakfast boolean, _islunch boolean, _iscombo boolean, _isspicy boolean, _isfeatured boolean, _dishingredientlist varchar[])
     RETURNS text AS
     $$
         DECLARE _adddish text:= 'none'; _adddishingredient text := 'none'; _intarray integer[]; _indgname varchar; _id integer := 0; _dishid integer := 0;
@@ -317,7 +312,7 @@ CREATE OR REPLACE FUNCTION add_dish_and_dishingredients(_restaurantalias text, _
             END LOOP;
 
             SELECT add_dish(_restaurantalias, _dishname, _description, _categoryname, _pricebreakfast, _pricelunch,
-                            _pricecombo, _pricedinner, _isbreakfast, _islunch, _iscombo, _isspicy) INTO _adddish;
+                            _pricecombo, _pricedinner, _isbreakfast, _islunch, _iscombo, _isspicy, _isfeatured) INTO _adddish;
             --SELECT id INTO _dishId FROM public.dish where dishname like '%' || _dishname || '%';
             SELECT add_dishingredients(_dishname, _intarray, _restaurantalias) INTO _adddishingredient;
         RETURN _adddish || '--' || _adddishingredient;
@@ -325,82 +320,83 @@ CREATE OR REPLACE FUNCTION add_dish_and_dishingredients(_restaurantalias text, _
     $$
 LANGUAGE 'plpgsql' VOLATILE;
 
-SELECT add_dish_and_dishingredients('CW', 'Chicken and Broccoli', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Chicken, Broc, Brown S}');SELECT add_dish_and_dishingredients('CW', 'General Tso''s Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Chicken, Broc, Red, Scall, Gen}');
-SELECT add_dish_and_dishingredients('CW', 'Kung Pao Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Car, Green, Red, Water, Cel}');
-SELECT add_dish_and_dishingredients('CW', 'Hunan Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Snow, Water, Car, Green, Red, Broc, Cel, Hunan S}');
-SELECT add_dish_and_dishingredients('CW', 'Chicken w. Garlic Sauce', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Snow, Chicken, Water, Car, Green, Red, Broc, Cel, Hunan S, Garlic S}');
-SELECT add_dish_and_dishingredients('CW', 'Sesame Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Chick, Broc, Red, Scall, Sesame S}');
-SELECT add_dish_and_dishingredients('CW', 'Orange Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Chick, Broc, Red, Scall, Orange S}');
-SELECT add_dish_and_dishingredients('CW', 'Sweet ''n Sour Chicken', 'N/A', 'Poultry', 0.00, 7.95, 5.95, 9.95, False, True, True, False, '{Chick, Sweet}');
-SELECT add_dish_and_dishingredients('CW', 'Cashew Chicken', 'N/A', 'Poultry', 0.00,5.95, 7.95, 9.95, False, True, True, False, '{Car, Cel, Chick, Cash}');
-SELECT add_dish_and_dishingredients('CW', 'Almond Chicken', 'N/A', 'Poultry', 0.00,  5.95, 7.95, 9.95, False, True, True, False, '{Car, Cel, Chick, Almond}');
-SELECT add_dish_and_dishingredients('CW', 'Chicken w. Snow Peas', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Snow, Water, Car, Chicken, Green, Red, Broc, Cel, Hunan S, Brown S}');
-SELECT add_dish_and_dishingredients('CW', 'Chicken w. Chinese Vegetables', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Snow, Water, Car, Chicken, Green, Red, Broc, Cel, Hunan S, Brown S}');
-SELECT add_dish_and_dishingredients('CW', 'Moo Goo Gai Pan', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Snow, Water, Car, Green, Red, Chicken, Broc, Cel, Hunan S, White S}');
-SELECT add_dish_and_dishingredients('CW', 'Peanut Butter Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{P.B., Car, Onion, Scal, Chicken}');
-SELECT add_dish_and_dishingredients('CW', 'Szechuan Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, False, True, True, '{Snow, Water, Car, Green, Chicken, Red, Broc, Cel, Hunan S, Szechuan S}');
-SELECT add_dish_and_dishingredients('CW', 'Mongolian Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Chicken, Onion, Scal, Mongolian S}');
+SELECT add_dish_and_dishingredients('CW', 'Chicken and Broccoli', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Chicken, Broc, Brown S}');
+SELECT add_dish_and_dishingredients('CW', 'General Tso''s Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Chicken, Broc, Red, Scall, Gen}');
+SELECT add_dish_and_dishingredients('CW', 'Kung Pao Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Car, Green, Red, Water, Cel}');
+SELECT add_dish_and_dishingredients('CW', 'Hunan Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Snow, Water, Car, Green, Red, Broc, Cel, Hunan S}');
+SELECT add_dish_and_dishingredients('CW', 'Chicken w. Garlic Sauce', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Snow, Chicken, Water, Car, Green, Red, Broc, Cel, Hunan S, Garlic S}');
+SELECT add_dish_and_dishingredients('CW', 'Sesame Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, False, True, '{Chick, Broc, Red, Scall, Sesame S}');
+SELECT add_dish_and_dishingredients('CW', 'Orange Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, True, '{Chick, Broc, Red, Scall, Orange S}');
+SELECT add_dish_and_dishingredients('CW', 'Sweet ''n Sour Chicken', 'N/A', 'Poultry', 0.00, 7.95, 5.95, 9.95, False, True, True, False, False, '{Chick, Sweet}');
+SELECT add_dish_and_dishingredients('CW', 'Cashew Chicken', 'N/A', 'Poultry', 0.00,5.95, 7.95, 9.95, False, True, True, False, False, '{Car, Cel, Chick, Cash}');
+SELECT add_dish_and_dishingredients('CW', 'Almond Chicken', 'N/A', 'Poultry', 0.00,  5.95, 7.95, 9.95, False, True, True, False, False, '{Car, Cel, Chick, Almond}');
+SELECT add_dish_and_dishingredients('CW', 'Chicken w. Snow Peas', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Snow, Water, Car, Chicken, Green, Red, Broc, Cel, Hunan S, Brown S}');
+SELECT add_dish_and_dishingredients('CW', 'Chicken w. Chinese Vegetables', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Snow, Water, Car, Chicken, Green, Red, Broc, Cel, Hunan S, Brown S}');
+SELECT add_dish_and_dishingredients('CW', 'Moo Goo Gai Pan', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Snow, Water, Car, Green, Red, Chicken, Broc, Cel, Hunan S, White S}');
+SELECT add_dish_and_dishingredients('CW', 'Peanut Butter Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{P.B., Car, Onion, Scal, Chicken}');
+SELECT add_dish_and_dishingredients('CW', 'Szechuan Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, False, True, True, False, '{Snow, Water, Car, Green, Chicken, Red, Broc, Cel, Hunan S, Szechuan S}');
+SELECT add_dish_and_dishingredients('CW', 'Mongolian Chicken', 'N/A', 'Poultry', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Chicken, Onion, Scal, Mongolian S}');
 
-SELECT add_dish_and_dishingredients('CW', 'Beef and Broccoli', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Snow, Water, Car, Green, Red, Beef, Broc, Cel, Hunan S, Hunan S}');
-SELECT add_dish_and_dishingredients('CW', 'Hunan Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Snow, Water, Car, Green, Red, Beef, Broc, Cel, Hunan S, Hunan S}');
-SELECT add_dish_and_dishingredients('CW', 'General Tso''s Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Beef, Broc, Red, Scall, Gen}');
-SELECT add_dish_and_dishingredients('CW', 'Kung Pao Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Beef, Car, Green, Red, Water, Cel}');
-SELECT add_dish_and_dishingredients('CW', 'Beef w. Garlic Sauce', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Beef, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Garlic S}');
-SELECT add_dish_and_dishingredients('CW', 'Sesame Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Beef, Broc, Red, Scall, Sesame Sauce, Sesame Seed}');
-SELECT add_dish_and_dishingredients('CW', 'Orange Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Beef, Broc, Red, Scall, Orange Sauce}');
-SELECT add_dish_and_dishingredients('CW', 'Cashew Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Car, Cel, Beef, Cash}');
-SELECT add_dish_and_dishingredients('CW', 'Almond Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Car, Cel, Beef, Almond}');
-SELECT add_dish_and_dishingredients('CW', 'Beef w. Snow Peas', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Beef, Brown S}');
-SELECT add_dish_and_dishingredients('CW', 'Beef w. Chinese Vegetables', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Beef, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Brown S}');
-SELECT add_dish_and_dishingredients('CW', 'Pepper Steak w. Onion', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Beef, Green, Onion}');
-SELECT add_dish_and_dishingredients('CW', 'Szechuan Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, False, True, True, '{Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Szechuan S}');
-SELECT add_dish_and_dishingredients('CW', 'Mongolian Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Beef, Onion, Scal, Red, Mongolian S}');
+SELECT add_dish_and_dishingredients('CW', 'Beef and Broccoli', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Snow, Water, Car, Green, Red, Beef, Broc, Cel, Hunan S, Hunan S}');
+SELECT add_dish_and_dishingredients('CW', 'Hunan Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Snow, Water, Car, Green, Red, Beef, Broc, Cel, Hunan S, Hunan S}');
+SELECT add_dish_and_dishingredients('CW', 'General Tso''s Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Beef, Broc, Red, Scall, Gen}');
+SELECT add_dish_and_dishingredients('CW', 'Kung Pao Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Beef, Car, Green, Red, Water, Cel}');
+SELECT add_dish_and_dishingredients('CW', 'Beef w. Garlic Sauce', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Beef, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Garlic S}');
+SELECT add_dish_and_dishingredients('CW', 'Sesame Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Beef, Broc, Red, Scall, Sesame Sauce, Sesame Seed}');
+SELECT add_dish_and_dishingredients('CW', 'Orange Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Beef, Broc, Red, Scall, Orange Sauce}');
+SELECT add_dish_and_dishingredients('CW', 'Cashew Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Car, Cel, Beef, Cash}');
+SELECT add_dish_and_dishingredients('CW', 'Almond Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Car, Cel, Beef, Almond}');
+SELECT add_dish_and_dishingredients('CW', 'Beef w. Snow Peas', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Beef, Brown S}');
+SELECT add_dish_and_dishingredients('CW', 'Beef w. Chinese Vegetables', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Beef, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Brown S}');
+SELECT add_dish_and_dishingredients('CW', 'Pepper Steak w. Onion', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Beef, Green, Onion}');
+SELECT add_dish_and_dishingredients('CW', 'Szechuan Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, False, True, True, False, '{Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Szechuan S}');
+SELECT add_dish_and_dishingredients('CW', 'Mongolian Beef', 'N/A', 'Beef', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Beef, Onion, Scal, Red, Mongolian S}');
 
-SELECT add_dish_and_dishingredients('CW', 'Pork and Broccoli', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Pork, Broc}');
-SELECT add_dish_and_dishingredients('CW', 'General Tso''s Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Pork, Broc, Red, Scall, Gen}');
-SELECT add_dish_and_dishingredients('CW', 'Kung Pao Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Pork, Car, Green, Red, Water, Cel}');
-SELECT add_dish_and_dishingredients('CW', 'Hunan Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Snow, Water, Car, Green, Red, Pork, Broc, Cel, Hunan S, Hunan S}');
-SELECT add_dish_and_dishingredients('CW', 'Pork w. Garlic Sauce', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Pork, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Garlic S}');
-SELECT add_dish_and_dishingredients('CW', 'Sesame Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Pork, Broc, Red, Scall, Sesame Sauce, Sesame Seed}');
-SELECT add_dish_and_dishingredients('CW', 'Orange Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Pork, Broc, Red, Scall, Orange Sauce}');
-SELECT add_dish_and_dishingredients('CW', 'Sweet ''n Sour Pork', 'N/A', 'Pork', 0.00, 7.95, 5.95, 9.95, False, True, True,False, '{Pork, Pine, Onion, Scal}');
-SELECT add_dish_and_dishingredients('CW', 'Cashew Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Car, Cel, Pork, Cash}');
-SELECT add_dish_and_dishingredients('CW', 'Almond Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Car, Cel, Pork, Almond}');
-SELECT add_dish_and_dishingredients('CW', 'Pork w. Snow Peas', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Pork, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Brown S}');
-SELECT add_dish_and_dishingredients('CW', 'Pork w. Chinese Vegetables', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Pork, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Brown S}');
-SELECT add_dish_and_dishingredients('CW', 'Szechuan Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Pork, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Szechuan S}');
-SELECT add_dish_and_dishingredients('CW', 'Mongolian Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Pork, Onion, Scal, Red, Mongolian S}');
+SELECT add_dish_and_dishingredients('CW', 'Pork and Broccoli', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Pork, Broc}');
+SELECT add_dish_and_dishingredients('CW', 'General Tso''s Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Pork, Broc, Red, Scall, Gen}');
+SELECT add_dish_and_dishingredients('CW', 'Kung Pao Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Pork, Car, Green, Red, Water, Cel}');
+SELECT add_dish_and_dishingredients('CW', 'Hunan Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Snow, Water, Car, Green, Red, Pork, Broc, Cel, Hunan S, Hunan S}');
+SELECT add_dish_and_dishingredients('CW', 'Pork w. Garlic Sauce', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Pork, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Garlic S}');
+SELECT add_dish_and_dishingredients('CW', 'Sesame Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Pork, Broc, Red, Scall, Sesame Sauce, Sesame Seed}');
+SELECT add_dish_and_dishingredients('CW', 'Orange Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Pork, Broc, Red, Scall, Orange Sauce}');
+SELECT add_dish_and_dishingredients('CW', 'Sweet ''n Sour Pork', 'N/A', 'Pork', 0.00, 7.95, 5.95, 9.95, False, True, True,False, False, '{Pork, Pine, Onion, Scal}');
+SELECT add_dish_and_dishingredients('CW', 'Cashew Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Car, Cel, Pork, Cash}');
+SELECT add_dish_and_dishingredients('CW', 'Almond Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Car, Cel, Pork, Almond}');
+SELECT add_dish_and_dishingredients('CW', 'Pork w. Snow Peas', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Pork, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Brown S}');
+SELECT add_dish_and_dishingredients('CW', 'Pork w. Chinese Vegetables', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Pork, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Brown S}');
+SELECT add_dish_and_dishingredients('CW', 'Szechuan Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Pork, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Szechuan S}');
+SELECT add_dish_and_dishingredients('CW', 'Mongolian Pork', 'N/A', 'Pork', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Pork, Onion, Scal, Red, Mongolian S}');
 
-SELECT add_dish_and_dishingredients('CW', 'Shrimp and Broccoli', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Shrimp, Broc}');
-SELECT add_dish_and_dishingredients('CW', 'Kung Pao Shrimp', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Shrimp, Car, Green, Red, Water, Cel}');
-SELECT add_dish_and_dishingredients('CW', 'Hunan Shrimp', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Snow, Water, Car, Green, Red, Shrimp, Broc, Cel, Hunan S, Hunan S}');
-SELECT add_dish_and_dishingredients('CW', 'Shrimp w. Garlic Sauce', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Shrimp, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Garlic S}');
-SELECT add_dish_and_dishingredients('CW', 'Sesame Shrimp', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Shrimp, Broc, Red, Scall, Sesame Sauce, Sesame Seed}');
-SELECT add_dish_and_dishingredients('CW', 'Sweet ''n Sour Shrimp', 'N/A', 'Seafood', 0.00, 7.95, 5.95, 9.95, False, True, True, False, '{Shrimp, Pine, Onion, Scal}');
-SELECT add_dish_and_dishingredients('CW', 'Cashew Shrimp', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Car, Cel, Shrimp, Cash}');
-SELECT add_dish_and_dishingredients('CW', 'Almond Shrimp', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Car, Cel, Shrimp, Almond}');
-SELECT add_dish_and_dishingredients('CW', 'Shrimp w. Snow Peas', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Shrimp, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Brown S}');
-SELECT add_dish_and_dishingredients('CW', 'Shrimp w. Chinese Vegetables', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Shrimp, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Brown S}');
-SELECT add_dish_and_dishingredients('CW', 'Szechuan Shrimp', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Shrimp, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Szechuan S}');
-SELECT add_dish_and_dishingredients('CW', 'Mongolian Shrimp', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Shrimp, Onion, Scal, Red, Mongolian S}');
+SELECT add_dish_and_dishingredients('CW', 'Shrimp and Broccoli', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Shrimp, Broc}');
+SELECT add_dish_and_dishingredients('CW', 'Kung Pao Shrimp', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Shrimp, Car, Green, Red, Water, Cel}');
+SELECT add_dish_and_dishingredients('CW', 'Hunan Shrimp', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Snow, Water, Car, Green, Red, Shrimp, Broc, Cel, Hunan S, Hunan S}');
+SELECT add_dish_and_dishingredients('CW', 'Shrimp w. Garlic Sauce', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Shrimp, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Garlic S}');
+SELECT add_dish_and_dishingredients('CW', 'Sesame Shrimp', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Shrimp, Broc, Red, Scall, Sesame Sauce, Sesame Seed}');
+SELECT add_dish_and_dishingredients('CW', 'Sweet ''n Sour Shrimp', 'N/A', 'Seafood', 0.00, 7.95, 5.95, 9.95, False, True, True, False, False, '{Shrimp, Pine, Onion, Scal}');
+SELECT add_dish_and_dishingredients('CW', 'Cashew Shrimp', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Car, Cel, Shrimp, Cash}');
+SELECT add_dish_and_dishingredients('CW', 'Almond Shrimp', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Car, Cel, Shrimp, Almond}');
+SELECT add_dish_and_dishingredients('CW', 'Shrimp w. Snow Peas', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Shrimp, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Brown S}');
+SELECT add_dish_and_dishingredients('CW', 'Shrimp w. Chinese Vegetables', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Shrimp, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Brown S}');
+SELECT add_dish_and_dishingredients('CW', 'Szechuan Shrimp', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Shrimp, Snow, Water, Car, Green, Red, Broc, Cel, Hunan S, Szechuan S}');
+SELECT add_dish_and_dishingredients('CW', 'Mongolian Shrimp', 'N/A', 'Seafood', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Shrimp, Onion, Scal, Red, Mongolian S}');
 
-SELECT add_dish_and_dishingredients('CW', 'Chicken Lo Mein', 'N/A', 'LoMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Chicken, Scal, Onion, Cab}');
-SELECT add_dish_and_dishingredients('CW', 'Beef Lo Mein', 'N/A', 'LoMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Beef, Scal, Onion, Cab}');
-SELECT add_dish_and_dishingredients('CW', 'Pork Lo Mein', 'N/A', 'LoMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Pork, Scal, Onion, Cab}');
-SELECT add_dish_and_dishingredients('CW', 'ShrimpLo Mein', 'N/A', 'LoMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Shrimp, Scal, Onion, Cab}');
-SELECT add_dish_and_dishingredients('CW', 'House Special Lo Mein', 'N/A', 'LoMein', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Chicken, Pork, Shrimp, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'Chicken Lo Mein', 'N/A', 'LoMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Chicken, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'Beef Lo Mein', 'N/A', 'LoMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Beef, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'Pork Lo Mein', 'N/A', 'LoMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Pork, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'ShrimpLo Mein', 'N/A', 'LoMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Shrimp, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'House Special Lo Mein', 'N/A', 'LoMein', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Chicken, Pork, Shrimp, Scal, Onion, Cab}');
 
-SELECT add_dish_and_dishingredients('CW', 'Chicken Chow Mein', 'N/A', 'ChowMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Chicken, Scal, Onion, Cab}');
-SELECT add_dish_and_dishingredients('CW', 'Beef Chow Mein', 'N/A', 'ChowMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Beef, Scal, Onion, Cab}');
-SELECT add_dish_and_dishingredients('CW', 'Pork Chow Mein', 'N/A', 'ChowMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Pork, Scal, Onion, Cab}');
-SELECT add_dish_and_dishingredients('CW', 'Shrimp Chow Mein', 'N/A', 'ChowMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Shrimp, Scal, Onion, Cab}');
-SELECT add_dish_and_dishingredients('CW', 'House Special Chow Mein', 'N/A', 'ChowMein', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Chicken, Pork, Shrimp, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'Chicken Chow Mein', 'N/A', 'ChowMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Chicken, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'Beef Chow Mein', 'N/A', 'ChowMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Beef, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'Pork Chow Mein', 'N/A', 'ChowMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Pork, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'Shrimp Chow Mein', 'N/A', 'ChowMein', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Shrimp, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'House Special Chow Mein', 'N/A', 'ChowMein', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Chicken, Pork, Shrimp, Scal, Onion, Cab}');
 
-SELECT add_dish_and_dishingredients('CW', 'Chicken Fried Rice', 'N/A', 'FriedRice', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Chicken, Scal, Onion, Cab}');
-SELECT add_dish_and_dishingredients('CW', 'Beef Fried Rice', 'N/A', 'FriedRice', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Beef, Scal, Onion, Cab}');
-SELECT add_dish_and_dishingredients('CW', 'Pork Fried Rice', 'N/A', 'FriedRice', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Pork, Scal, Onion, Cab}');
-SELECT add_dish_and_dishingredients('CW', 'Shrimp Fried Rice', 'N/A', 'FriedRice', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Shrimp, Scal, Onion, Cab}');
-SELECT add_dish_and_dishingredients('CW', 'House Special Fried Rice', 'N/A', 'FriedRice', 0.00, 5.95, 7.95, 9.95, False, False, False, False, '{Chicken, Pork, Shrimp, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'Chicken Fried Rice', 'N/A', 'FriedRice', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Chicken, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'Beef Fried Rice', 'N/A', 'FriedRice', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Beef, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'Pork Fried Rice', 'N/A', 'FriedRice', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Pork, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'Shrimp Fried Rice', 'N/A', 'FriedRice', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Shrimp, Scal, Onion, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'House Special Fried Rice', 'N/A', 'FriedRice', 0.00, 5.95, 7.95, 9.95, False, False, False, False, False, '{Chicken, Pork, Shrimp, Scal, Onion, Cab}');
 
 
 -- SELECT add_dish_and_ingredient('CW', 'Chicken Mei Fun', 'N/A', 'MeiFun,Chicken', 5.95, 7.95, 9.95, True, True, '{1,12}');
@@ -415,19 +411,19 @@ SELECT add_dish_and_dishingredients('CW', 'House Special Fried Rice', 'N/A', 'Fr
 -- SELECT add_dish_and_ingredient('CW', 'Shrimp Egg Foo Young', 'N/A', 'EggFooYoung,Shrimp', 5.95, 7.95, 9.95, True, True, '{1,12}');
 -- SELECT add_dish_and_ingredient('CW', 'House Egg Foo Young', 'N/A', 'EggFooYoung', 5.95, 7.95, 9.95, False, False, '{1,12}');
 
-SELECT add_dish_and_dishingredients('CW', 'Egg Drop Soup', 'N/A', 'Soup', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Egg}');
-SELECT add_dish_and_dishingredients('CW', 'Hot & Sour Soup', 'N/A', 'Soup', 0.00, 5.95, 7.95, 9.95, False, True, True, True, '{Pork, Tofu}');
-SELECT add_dish_and_dishingredients('CW', 'Wonton Soup', 'N/A', 'Soup', 0.00, 6.95, 7.95, 9.95, False, True, True, False, '{Pork}');
-SELECT add_dish_and_dishingredients('CW', 'Chicken Noodle Soup', 'N/A', 'Soup', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Noodle, Carrot, Scal}');
-SELECT add_dish_and_dishingredients('CW', 'Vegetable Soup', 'N/A', 'Soup', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Cab, Snow, Scal, Broc, Bok}');
-SELECT add_dish_and_dishingredients('CW', 'House Special Soup', 'N/A', 'Soup', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Chicken, Pork, Shrimp, Cab, Snow, Scal, Broc, Bok}');
+SELECT add_dish_and_dishingredients('CW', 'Egg Drop Soup', 'N/A', 'Soup', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Egg}');
+SELECT add_dish_and_dishingredients('CW', 'Hot & Sour Soup', 'N/A', 'Soup', 0.00, 5.95, 7.95, 9.95, False, True, True, True, False, '{Pork, Tofu}');
+SELECT add_dish_and_dishingredients('CW', 'Wonton Soup', 'N/A', 'Soup', 0.00, 6.95, 7.95, 9.95, False, True, True, False, False, '{Pork}');
+SELECT add_dish_and_dishingredients('CW', 'Chicken Noodle Soup', 'N/A', 'Soup', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Noodle, Carrot, Scal}');
+SELECT add_dish_and_dishingredients('CW', 'Vegetable Soup', 'N/A', 'Soup', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Cab, Snow, Scal, Broc, Bok}');
+SELECT add_dish_and_dishingredients('CW', 'House Special Soup', 'N/A', 'Soup', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Chicken, Pork, Shrimp, Cab, Snow, Scal, Broc, Bok}');
 
-SELECT add_dish_and_dishingredients('CW', 'Egg Roll', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Pork, Cab}');
-SELECT add_dish_and_dishingredients('CW', 'Spring Egg Roll', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Pork, Cab}');
-SELECT add_dish_and_dishingredients('CW', 'Fried Wonton or Szechuan Wonton', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Pork}');
-SELECT add_dish_and_dishingredients('CW', 'Dumplings (Fried or Steam)', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Pork}');
-SELECT add_dish_and_dishingredients('CW', 'Chicken Fingers', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Chicken}');
-SELECT add_dish_and_dishingredients('CW', 'Crab Rangoon', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, '{Cream, Scallion, Crab}');
+SELECT add_dish_and_dishingredients('CW', 'Egg Roll', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Pork, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'Spring Egg Roll', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Pork, Cab}');
+SELECT add_dish_and_dishingredients('CW', 'Fried Wonton or Szechuan Wonton', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Pork}');
+SELECT add_dish_and_dishingredients('CW', 'Dumplings (Fried or Steam)', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Pork}');
+SELECT add_dish_and_dishingredients('CW', 'Chicken Fingers', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Chicken}');
+SELECT add_dish_and_dishingredients('CW', 'Crab Rangoon', 'N/A', 'Appetizer', 0.00, 5.95, 7.95, 9.95, False, True, True, False, False, '{Cream, Scallion, Crab}');
 
 Insert into tblDishImageSize(height_i, width_i, sizename_s) values(300, 300, 'LRG');
 Insert into tblDishImageSize(height_i, width_i, sizename_s) values(200, 200, 'MED');
@@ -436,19 +432,19 @@ Insert into tblDishImageSize(height_i, width_i, sizename_s) values(100, 100, 'SM
 CREATE OR REPLACE FUNCTION add_dish_image()
   RETURNS void AS
   $$
-    DECLARE _dishname text:= ''; _dish_ix integer:= 0; temprow record; imagesize record; _fulldishname text:= '';
+    DECLARE _dishname text:= ''; _dish_ix integer:= 0; temprow record; imagesize record; _imagelocation text:= '';
     BEGIN
       delete from tbldishimage where dishimage_ix > 0;
       FOR temprow IN
         select replace(replace(regexp_replace(dishname_s, '[''''|.|\\)]', ''), '(', ''), ' ', '_') as _dishname, dish_ix from tbldish
       LOOP
-
-      FOR imagesize IN
+        -- second loop
+        FOR imagesize IN
           SELECT * FROM tblDishImageSize
         LOOP
-        	_fulldishname = temprow._dishname || '_' || imagesize.sizename_s;
-          INSERT INTO tblDishImage(imageposition_i, imagename_s, createuser_s, updateuser_s, createdateutc_dt, updatedateutc_dt, dish_ix, dishimagesize_ix)
-            VALUES(1, _fulldishname, 'NETT',NULL, CURRENT_TIMESTAMP, NULL, temprow.dish_ix, imagesize.dishimagesize_ix);
+        	_imagelocation = temprow._dishname || '_' || imagesize.sizename_s || '.jpg';
+          INSERT INTO tblDishImage(imageposition_i, imagelocation_s, createuser_s, updateuser_s, createdateutc_dt, updatedateutc_dt, dish_ix, dishimagesize_ix)
+            VALUES(1, _imagelocation, 'NETT',NULL, CURRENT_TIMESTAMP, NULL, temprow.dish_ix, imagesize.dishimagesize_ix);
         END LOOP;
       END LOOP;
     END;
@@ -456,3 +452,4 @@ CREATE OR REPLACE FUNCTION add_dish_image()
 LANGUAGE 'plpgsql' VOLATILE;
 
 select add_dish_image();
+select * from tbldishimage;
